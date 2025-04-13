@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import LogViewer from '@/components/logger/LogViewer';
 import SessionPrompt from '@/components/logger/SessionPrompt';
+import SessionConfirmation from '@/components/logger/SessionConfirmation';
 import LoggerService from '@/components/logger/LoggerService';
 
 // Global state for app settings
@@ -37,6 +38,8 @@ export default function HomeScreen() {
   const [settings, setSettings] = useState<AppSettings>({ ...defaultSettings });
   const [showLogViewer, setShowLogViewer] = useState(false);
   const [showSessionPrompt, setShowSessionPrompt] = useState(false);
+  const [showSessionConfirmation, setShowSessionConfirmation] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState({ userId: '', sessionCode: '' });
 
   // Update both local and global settings
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
@@ -45,11 +48,20 @@ export default function HomeScreen() {
     globalSettings = newSettings;
   };
 
-  // Handle session submission
-  const handleSessionSubmit = async (userId: string, sessionCode: string) => {
+  // Handle session information submission
+  const handleSessionInfoSubmit = (userId: string, sessionCode: string) => {
     setShowSessionPrompt(false);
+    setSessionInfo({ userId, sessionCode });
+    setShowSessionConfirmation(true);
+  };
+
+  // Handle final session confirmation and start
+  const handleSessionSubmit = async () => {
+    setShowSessionConfirmation(false);
     
     try {
+      const { userId, sessionCode } = sessionInfo;
+      
       // Initialize logger here before navigation
       const logger = await LoggerService.createLogger({ userId, sessionCode });
       if (!logger) {
@@ -73,6 +85,12 @@ export default function HomeScreen() {
   // Handle session cancellation
   const handleSessionCancel = () => {
     setShowSessionPrompt(false);
+  };
+
+  // Handle confirmation cancellation (back to session prompt)
+  const handleConfirmationCancel = () => {
+    setShowSessionConfirmation(false);
+    setShowSessionPrompt(true);
   };
 
   return (
@@ -156,8 +174,18 @@ export default function HomeScreen() {
       {/* Session Prompt Modal */}
       <SessionPrompt 
         visible={showSessionPrompt}
-        onSubmit={handleSessionSubmit}
+        onSubmit={handleSessionInfoSubmit}
         onCancel={handleSessionCancel}
+      />
+
+      {/* Session Confirmation Modal */}
+      <SessionConfirmation
+        visible={showSessionConfirmation}
+        userId={sessionInfo.userId}
+        sessionCode={sessionInfo.sessionCode}
+        dynamicHitboxEnabled={settings.dynamicHitboxEnabled}
+        onConfirm={handleSessionSubmit}
+        onCancel={handleConfirmationCancel}
       />
     </SafeAreaView>
     </ThemedView>

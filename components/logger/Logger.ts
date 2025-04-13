@@ -71,9 +71,6 @@ class SQLiteLogger {
       this.isInitialized = true;
       console.log('Logger initialized successfully.');
 
-      // Log the session start event automatically upon initialization.
-      await this.log('session_start', { userId: this.userId, sessionCode: this.sessionCode });
-
     } catch (error) {
       console.error('Failed to initialize logger database:', error);
       this.isInitialized = false;
