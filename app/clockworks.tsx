@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   confirmationButton: {
-    padding: 10,
+    padding: 6,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
