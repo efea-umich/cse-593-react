@@ -236,7 +236,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
     setHitboxAffected(probabilityDidChangeOutcome);
     
     if (logger) {
-      logger.log(`Typed ${candidates[0].keyPos.letter}`, { currentInput: message });
+      logger.log(`key_typed`, { currentInput: message, key: candidates[0].keyPos.letter });
     } else {
       console.log(`Typed ${candidates[0].keyPos.letter} (current input: ${message})`);
     }
@@ -314,7 +314,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
   const handleBackspace = () => {
     if (message.length > 0) {
         if (logger) {
-          logger.log(`Backspace pressed`, { currentInput: message });
+          logger.log(`backspace_pressed`, { currentInput: message });
         } else {
           console.log(`Backspace pressed (current input: ${message})`);
         }
