@@ -55,14 +55,19 @@ const DEFAULT_PROBABILITY = 0.5;
 const DEBUG_HITBOXES = false; // Keep false for production - now only controls debug overlay
 
 // Helper function to get probability (Unchanged)
-const getProbability = (prevKey: string, targetKey: string): number => {
-  prevKey = prevKey.toLowerCase();
+const getProbability = (prevKeys: string, targetKey: string): number => {
+  prevKeys = prevKeys.toLowerCase();
   targetKey = targetKey.toLowerCase();
+
+  if (prevKeys.length == 2 && prevKeys[0] == " ") {
+    prevKeys = prevKeys[1];
+  }
   
-  if (!/^[a-z]$/.test(prevKey) || !/^[a-z]$/.test(targetKey)) {
+  if (!/^[a-z]*$/.test(prevKeys) || !/^[a-z]$/.test(targetKey)) {
     return DEFAULT_PROBABILITY;
   }
-  const probabilitiesForPrev = hitboxProbabilities[prevKey];
+
+  const probabilitiesForPrev = hitboxProbabilities[prevKeys];
   if (probabilitiesForPrev && typeof probabilitiesForPrev[targetKey] === 'number') {
     return probabilitiesForPrev[targetKey];
   }
@@ -169,7 +174,9 @@ export default function KeyboardView(props: KeyboardViewProps) {
     let closestDistance = Infinity;
     // Define a threshold below which a touch is considered "centered".
     const CENTER_TOUCH_THRESHOLD = 0.15; // Adjust (in normalized units) as needed
-  
+    const probsDebug = {};
+    const probsDebugRaw = {};
+    const lastTwo = message.slice(-2);
     keyPositions.forEach((kp) => {
       const centerX = kp.x + kp.width / 2;
       const centerY = kp.y + kp.height / 2;
@@ -193,7 +200,8 @@ export default function KeyboardView(props: KeyboardViewProps) {
       let score = 0;
       if (shouldUseDynamicHitbox) {
         if (lastLetterPressed.current) {
-          const probability = Math.sqrt(getProbability(lastLetterPressed.current, kp.letter));
+          const probabilityRaw = getProbability(lastTwo, kp.letter);
+          const probability = Math.log(probabilityRaw + 1);
           let distanceMultiplier = Math.exp(
             -Math.pow(normalizedDistance, 2) / 0.4
           )
@@ -204,10 +212,9 @@ export default function KeyboardView(props: KeyboardViewProps) {
       } else {
         score = distancePenalty;
       }
-  
       candidates.push({ keyPos: kp, distance, score, touchInside });
     });
-  
+    
     // If the overall closest touch is too far from any key center, do nothing.
     const MAX_DISTANCE_THRESHOLD_FACTOR = 0.5;
     const maxDistanceThreshold = Math.min(gridWidth, gridHeight) * MAX_DISTANCE_THRESHOLD_FACTOR;
@@ -229,7 +236,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
           probabilityDidChangeOutcome = true;
           if (logger) {
             logger.log(`changed_outcome`, { currentInput: message, changedFrom: candidatesByDistance[0].keyPos.letter, changedTo: candidates[0].keyPos.letter});
-            console.log(`Probabilities: ${getProbability(lastLetterPressed.current, candidatesByDistance[0].keyPos.letter)} to ${getProbability(lastLetterPressed.current, candidates[0].keyPos.letter)}`);
+            console.log(`Probabilities: ${getProbability(lastTwo, candidatesByDistance[0].keyPos.letter)} to ${getProbability(lastTwo, candidates[0].keyPos.letter)}`);
             console.log(`Distance factors: ${candidatesByDistance[0].distance} to ${candidates[0].distance}`);
           } else {
             console.log(`Changed outcome from ${candidatesByDistance[0].keyPos.letter} to ${candidates[0].keyPos.letter} (current input: ${message})`);
