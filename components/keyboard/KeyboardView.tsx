@@ -62,7 +62,7 @@ const getProbability = (prevKeys: string, targetKey: string): number => {
   if (prevKeys.length == 2 && prevKeys[0] == " ") {
     prevKeys = prevKeys[1];
   }
-  
+
   if (!/^[a-z]*$/.test(prevKeys) || !/^[a-z]$/.test(targetKey)) {
     return DEFAULT_PROBABILITY;
   }
@@ -116,15 +116,15 @@ export default function KeyboardView(props: KeyboardViewProps) {
   const initializeAnimatedScales = () => {
     const allKeys: string[] = keyLayout.flat();
     allKeys.forEach((letter) => {
-        const kp = keyPositions.find(p => p.letter === letter);
-        const keyId = kp ? `${kp.row}-${kp.col}-${letter}` : letter;
-        if (!animatedScalesRef.current[keyId]) {
-            animatedScalesRef.current[keyId] = new Animated.Value(BASE_SCALE);
-            currentScalesRef.current[keyId] = BASE_SCALE;
-        } else {
-            animatedScalesRef.current[keyId].setValue(BASE_SCALE);
-            currentScalesRef.current[keyId] = BASE_SCALE;
-        }
+      const kp = keyPositions.find(p => p.letter === letter);
+      const keyId = kp ? `${kp.row}-${kp.col}-${letter}` : letter;
+      if (!animatedScalesRef.current[keyId]) {
+        animatedScalesRef.current[keyId] = new Animated.Value(BASE_SCALE);
+        currentScalesRef.current[keyId] = BASE_SCALE;
+      } else {
+        animatedScalesRef.current[keyId].setValue(BASE_SCALE);
+        currentScalesRef.current[keyId] = BASE_SCALE;
+      }
     });
   };
 
@@ -169,7 +169,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
   const onResponderRelease = (evt: GestureResponderEvent) => {
     const { locationX, locationY } = evt.nativeEvent;
     if (keyPositions.length === 0) return;
-  
+
     const candidates: { keyPos: KeyPosition; distance: number; score: number; touchInside: boolean }[] = [];
     let closestDistance = Infinity;
     // Define a threshold below which a touch is considered "centered".
@@ -191,12 +191,12 @@ export default function KeyboardView(props: KeyboardViewProps) {
         locationY >= kp.y &&
         locationY <= kp.y + kp.height
       );
-  
+
       // Normalize the distance relative to the average key dimension.
       const avgKeyDimension = (kp.width + kp.height) / 2;
       const normalizedDistance = distance / avgKeyDimension;
       const distancePenalty = -Math.exp(normalizedDistance);
-  
+
       let score = 0;
 
       if (shouldUseDynamicHitbox) {
@@ -217,15 +217,6 @@ export default function KeyboardView(props: KeyboardViewProps) {
       }
       candidates.push({ keyPos: kp, distance, score, touchInside });
     });
-    // Sort probabilities by value for easier debugging
-    const sortedProbsDebug = Object.entries(probsDebug)
-      .sort(([, a], [, b]) => b - a)
-      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
-    
-    const sortedProbsDebugRaw = Object.entries(probsDebugRaw)
-      .sort(([, a], [, b]) => b - a)
-      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
-    
     // console.log(`Probs debug: ${JSON.stringify(sortedProbsDebug)}`);
     // console.log(`Probs debug raw: ${JSON.stringify(sortedProbsDebugRaw)}`);
     // If the overall closest touch is too far from any key center, do nothing.
@@ -234,21 +225,21 @@ export default function KeyboardView(props: KeyboardViewProps) {
     if (closestDistance > maxDistanceThreshold) {
       return;
     }
-  
+
     if (candidates.length === 0) return;
-  
+
     // Sort so that the candidate with the highest (or infinite) score is chosen.
     candidates.sort((a, b) => b.score - a.score);
 
     let selectedKey = candidates[0];
-  
+
     let probabilityDidChangeOutcome = false;
     const touchedCandidate = candidates.find(c => c.touchInside);
-    if (touchedCandidate && getProbability(lastTwo, touchedCandidate.keyPos.letter) > 0.1) {
-        selectedKey = touchedCandidate;
+    if (touchedCandidate && getProbability(lastTwo, touchedCandidate.keyPos.letter) > 0.04) {
+      selectedKey = touchedCandidate;
     } else {
       if (touchedCandidate && logger && touchedCandidate.keyPos.letter !== candidates[0].keyPos.letter) {
-        logger.log(`changed_outcome`, { currentInput: message, changedFrom: touchedCandidate.keyPos.letter, changedTo: candidates[0].keyPos.letter});
+        logger.log(`changed_outcome`, { currentInput: message, changedFrom: touchedCandidate.keyPos.letter, changedTo: candidates[0].keyPos.letter });
         console.log(`Conditions: ${touchedCandidate == null} ${logger == null} ${touchedCandidate?.keyPos.letter == candidates[0].keyPos.letter}`);
         probabilityDidChangeOutcome = true;
       }
@@ -256,33 +247,33 @@ export default function KeyboardView(props: KeyboardViewProps) {
     }
 
     setHitboxAffected(probabilityDidChangeOutcome);
-    
+
     if (logger) {
       logger.log(`key_typed`, { currentInput: message, key: candidates[0].keyPos.letter });
     } else {
       console.log(`Typed ${candidates[0].keyPos.letter} (current input: ${message})`);
     }
-    
+
     handleKeyPress(selectedKey.keyPos);
   };
 
   // --- Key Scaling Logic (Unchanged, calculates values but not visually applied) ---
   const updateKeyScales = (pressedLetter: string, currentKeyPositions: KeyPosition[]) => {
-     if (!currentKeyPositions || currentKeyPositions.length === 0 || !/^[a-z]$/.test(pressedLetter)) {
-        Object.keys(animatedScalesRef.current).forEach(keyId => {
-             const letter = keyId.split('-').pop();
-             if (letter && /^[a-z]$/.test(letter.toLowerCase())) {
-                if (currentScalesRef.current[keyId] !== BASE_SCALE) {
-                    // Stop any ongoing animation and set value directly
-                    animatedScalesRef.current[keyId]?.stopAnimation();
-                    animatedScalesRef.current[keyId]?.setValue(BASE_SCALE);
-                    currentScalesRef.current[keyId] = BASE_SCALE;
-                }
-             }
-        });
-        setHitboxAffected(false);
-        return;
-     }
+    if (!currentKeyPositions || currentKeyPositions.length === 0 || !/^[a-z]$/.test(pressedLetter)) {
+      Object.keys(animatedScalesRef.current).forEach(keyId => {
+        const letter = keyId.split('-').pop();
+        if (letter && /^[a-z]$/.test(letter.toLowerCase())) {
+          if (currentScalesRef.current[keyId] !== BASE_SCALE) {
+            // Stop any ongoing animation and set value directly
+            animatedScalesRef.current[keyId]?.stopAnimation();
+            animatedScalesRef.current[keyId]?.setValue(BASE_SCALE);
+            currentScalesRef.current[keyId] = BASE_SCALE;
+          }
+        }
+      });
+      setHitboxAffected(false);
+      return;
+    }
 
     // No animations needed, but update currentScaleRef and hitboxAffected state
     let anyScaleChangedDueToProbability = false;
@@ -300,11 +291,11 @@ export default function KeyboardView(props: KeyboardViewProps) {
 
       // Update the ref value directly, no animation needed
       if (animatedScalesRef.current[keyId]) {
-          animatedScalesRef.current[keyId].setValue(targetScale); // Set value without animation
+        animatedScalesRef.current[keyId].setValue(targetScale); // Set value without animation
       } else {
-           animatedScalesRef.current[keyId] = new Animated.Value(targetScale);
+        animatedScalesRef.current[keyId] = new Animated.Value(targetScale);
       }
-       currentScalesRef.current[keyId] = targetScale; // Keep track of logical scale
+      currentScalesRef.current[keyId] = targetScale; // Keep track of logical scale
 
     });
 
@@ -335,32 +326,34 @@ export default function KeyboardView(props: KeyboardViewProps) {
   // Handle backspace (Unchanged)
   const handleBackspace = () => {
     if (message.length > 0) {
+      if (message[message.length-1] !== " ") {
         setDynamicHitboxDisabledOnError(true);
-        if (logger) {
-          logger.log(`backspace_pressed`, { currentInput: message });
-        } else {
-          console.log(`Backspace pressed (current input: ${message})`);
-        }
-        
-        const newMessage = message.slice(0, -1);
-        setMessage(newMessage);
-        if (newMessage.length > 0) {
-            const lastChar = newMessage[newMessage.length-1].toLowerCase();
-            if (/^[a-z]$/.test(lastChar)) {
-                lastLetterPressed.current = lastChar;
-                 if (shouldUseDynamicHitbox) {
-                    updateKeyScales(lastChar, keyPositions);
-                 } else {
-                    updateKeyScales('', keyPositions);
-                 }
-            } else {
-                lastLetterPressed.current = null;
-                updateKeyScales('', keyPositions);
-            }
-        } else {
-            lastLetterPressed.current = null;
+      }
+      if (logger) {
+        logger.log(`backspace_pressed`, { currentInput: message });
+      } else {
+        console.log(`Backspace pressed (current input: ${message})`);
+      }
+
+      const newMessage = message.slice(0, -1);
+      setMessage(newMessage);
+      if (newMessage.length > 0) {
+        const lastChar = newMessage[newMessage.length - 1].toLowerCase();
+        if (/^[a-z]$/.test(lastChar)) {
+          lastLetterPressed.current = lastChar;
+          if (shouldUseDynamicHitbox) {
+            updateKeyScales(lastChar, keyPositions);
+          } else {
             updateKeyScales('', keyPositions);
+          }
+        } else {
+          lastLetterPressed.current = null;
+          updateKeyScales('', keyPositions);
         }
+      } else {
+        lastLetterPressed.current = null;
+        updateKeyScales('', keyPositions);
+      }
     }
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -375,7 +368,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
     setMessage(message + ' ');
     lastLetterPressed.current = null;
     updateKeyScales('', keyPositions);
-     if (Platform.OS !== 'web') {
+    if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
@@ -384,7 +377,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
     onToggleNumberSymbol();
     lastLetterPressed.current = null;
     updateKeyScales('', keyPositions);
-     if (Platform.OS !== 'web') {
+    if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
@@ -496,29 +489,29 @@ export default function KeyboardView(props: KeyboardViewProps) {
               >
                 {/* Debug influence areas (Still controlled by DEBUG_HITBOXES) */}
                 {dynamicHitboxEnabled && DEBUG_HITBOXES && keyPositions.map((kp) => {
-                   const keyId = `${kp.row}-${kp.col}-${kp.letter}`;
-                   // Use currentScalesRef for debug visualization radius if needed
-                   const logicalScale = currentScalesRef.current[keyId] || BASE_SCALE;
-                   const radius = (Math.min(kp.width, kp.height) / 2) * logicalScale * 1.2; // Radius based on logical scale
-                   let probability = DEFAULT_PROBABILITY;
-                   if (lastLetterPressed.current) {
-                       probability = getProbability(lastLetterPressed.current, kp.letter);
-                   }
-                   const hue = probability > DEFAULT_PROBABILITY ? 0 : 240;
-                   const saturation = Math.abs(probability - DEFAULT_PROBABILITY) * 200;
-                   const alpha = Math.abs(probability - DEFAULT_PROBABILITY) * 0.5 + 0.1;
-                   return (
-                     <View
-                       key={`influence-${keyId}`}
-                       style={[ styles.influenceArea, {
-                           left: kp.x + kp.width / 2 - radius,
-                           top: kp.y + kp.height / 2 - radius,
-                           width: radius * 2, height: radius * 2,
-                           borderRadius: radius,
-                           backgroundColor: `hsla(${hue}, ${saturation}%, 50%, ${alpha})`,
-                         }]}
-                     />
-                   );
+                  const keyId = `${kp.row}-${kp.col}-${kp.letter}`;
+                  // Use currentScalesRef for debug visualization radius if needed
+                  const logicalScale = currentScalesRef.current[keyId] || BASE_SCALE;
+                  const radius = (Math.min(kp.width, kp.height) / 2) * logicalScale * 1.2; // Radius based on logical scale
+                  let probability = DEFAULT_PROBABILITY;
+                  if (lastLetterPressed.current) {
+                    probability = getProbability(lastLetterPressed.current, kp.letter);
+                  }
+                  const hue = probability > DEFAULT_PROBABILITY ? 0 : 240;
+                  const saturation = Math.abs(probability - DEFAULT_PROBABILITY) * 200;
+                  const alpha = Math.abs(probability - DEFAULT_PROBABILITY) * 0.5 + 0.1;
+                  return (
+                    <View
+                      key={`influence-${keyId}`}
+                      style={[styles.influenceArea, {
+                        left: kp.x + kp.width / 2 - radius,
+                        top: kp.y + kp.height / 2 - radius,
+                        width: radius * 2, height: radius * 2,
+                        borderRadius: radius,
+                        backgroundColor: `hsla(${hue}, ${saturation}%, 50%, ${alpha})`,
+                      }]}
+                    />
+                  );
                 })}
               </View>
             </>
@@ -527,9 +520,9 @@ export default function KeyboardView(props: KeyboardViewProps) {
 
         {/* Bottom Row Container (Unchanged) */}
         <View style={styles.bottomRowContainer}>
-            <TouchableOpacity style={[styles.bottomButton, styles.spaceButton]} onPress={handleSpacePress}>
-                <Text style={styles.bottomButtonText}>Space</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={[styles.bottomButton, styles.spaceButton]} onPress={handleSpacePress}>
+            <Text style={styles.bottomButtonText}>Space</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -566,7 +559,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 10,
-    marginBottom:0,
+    marginBottom: 0,
   },
   inputContainer: {
     height: 35,
@@ -603,21 +596,21 @@ const styles = StyleSheet.create({
     color: '#6b7280', // Gray color
   },
   keyboardArea: { // Container for grid + bottom row
-      flex: 1, // Takes remaining vertical space
-      marginHorizontal: 3, // Narrower horizontal margin
-      marginBottom: Platform.OS === 'ios' ? 10 : 5, // Bottom margin
+    flex: 1, // Takes remaining vertical space
+    marginHorizontal: 3, // Narrower horizontal margin
+    marginBottom: Platform.OS === 'ios' ? 10 : 5, // Bottom margin
   },
   gridContainer: { // Container for the letter keys grid
-      flex: 1, // Takes most of the keyboardArea height
-      position: 'relative', // For absolute positioning of layers inside
+    flex: 1, // Takes most of the keyboardArea height
+    position: 'relative', // For absolute positioning of layers inside
   },
   bottomRowContainer: { // Container for 123, Space etc.
-      flexDirection: 'row',
-      height: 30, // Fixed height for the bottom row
-      marginTop: 5, // Space between grid and bottom row
-      alignItems: 'center',
-      justifyContent: 'space-between', // Space out buttons
-      paddingHorizontal: 2, // Slight padding
+    flexDirection: 'row',
+    height: 30, // Fixed height for the bottom row
+    marginTop: 5, // Space between grid and bottom row
+    alignItems: 'center',
+    justifyContent: 'space-between', // Space out buttons
+    paddingHorizontal: 2, // Slight padding
   },
   key: { // Styles for letter keys
     position: 'absolute',
@@ -639,30 +632,30 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   bottomButton: { // Styles for Bottom Row Buttons
-      height: '100%', // Fill height of bottomRowContainer
-      borderRadius: 5,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginHorizontal: 2,
-      backgroundColor: '#adb5bd', // Gray background for function keys
-      // Shadow/Elevation
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.20,
-      shadowRadius: 1.41,
-      elevation: 2,
+    height: '100%', // Fill height of bottomRowContainer
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+    backgroundColor: '#adb5bd', // Gray background for function keys
+    // Shadow/Elevation
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.20,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   toggleButton: {
-      flex: 1.5, // Adjust flex proportions as needed
-      minWidth: 60,
+    flex: 1.5, // Adjust flex proportions as needed
+    minWidth: 60,
   },
   spaceButton: {
-      flex: 5, // Space takes up more room
+    flex: 5, // Space takes up more room
   },
   bottomButtonText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: '#1f2937', // Darker text for contrast
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1f2937', // Darker text for contrast
   },
   probabilityText: { // Debug Styles
     fontSize: 8,
