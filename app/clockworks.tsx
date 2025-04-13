@@ -26,7 +26,8 @@ enum AppView {
   SUGGESTIONS = 'suggestions',
   SUGGESTION_CONFIRMATION = 'suggestion_confirmation',
   KEYBOARD = 'keyboard',
-  NUMBER_SYMBOL = 'number_symbol'
+  NUMBER_SYMBOL = 'number_symbol',
+  SESSION_COMPLETED = 'session_completed'
 }
 
 export default function ClockworksApp() {
@@ -56,13 +57,6 @@ export default function ClockworksApp() {
     
     loggerRef.current = logger;
     logger.log('view_loaded', { view: 'clockworks' });
-    
-    return () => {
-      // Log session end when component unmounts
-      if (loggerRef.current) {
-        loggerRef.current.log('session_end');
-      }
-    };
   }, []);
 
   // Log view transitions
@@ -104,8 +98,12 @@ export default function ClockworksApp() {
           suggestion={selectedSuggestion}
           onSend={() => {
             handleTap('send_suggestion', { text: selectedSuggestion });
-            // Reset to initial view after sending
-            setCurrentView(AppView.INCOMING_MESSAGE);
+            // Log session end
+            if (loggerRef.current) {
+              loggerRef.current.log('session_end', { completed_with: 'suggestion' });
+            }
+            // Show session completion screen instead of going back to incoming message
+            setCurrentView(AppView.SESSION_COMPLETED);
           }}
           onEdit={() => {
             setMessage(selectedSuggestion);
@@ -132,8 +130,13 @@ export default function ClockworksApp() {
           }}
           onSend={() => {
             handleTap('send_message', { text: message });
+            // Log session end
+            if (loggerRef.current) {
+              loggerRef.current.log('session_end', { completed_with: 'keyboard' });
+            }
             setMessage('');
-            setCurrentView(AppView.INCOMING_MESSAGE);
+            // Show session completion screen
+            setCurrentView(AppView.SESSION_COMPLETED);
           }}
           onBack={() => {
             setCurrentView(AppView.INCOMING_MESSAGE);
@@ -149,6 +152,13 @@ export default function ClockworksApp() {
           onBackToKeyboard={() => {
             setCurrentView(AppView.KEYBOARD);
             handleTap('back_to_keyboard_from_symbols');
+          }}
+        />;
+      
+      case AppView.SESSION_COMPLETED:
+        return <SessionCompletedView 
+          onBackToHome={() => {
+            router.replace('/');
           }}
         />;
       
@@ -294,6 +304,38 @@ function SuggestionConfirmationView({
   );
 }
 
+interface SessionCompletedViewProps {
+  onBackToHome: () => void;
+}
+
+function SessionCompletedView({ onBackToHome }: SessionCompletedViewProps) {
+  const colorScheme = useColorScheme();
+  
+  return (
+    <View style={styles.doneContainer}>
+      <ThemedText style={styles.completionTitle}>
+        Mesage Sent
+      </ThemedText>
+      
+      <ThemedText style={styles.completionText}>
+        Please return the device to the conductor.
+      </ThemedText>
+      
+      <TouchableOpacity
+        style={[
+          styles.completionButton,
+          { backgroundColor: Colors[colorScheme ?? 'light'].tint }
+        ]}
+        onPress={onBackToHome}
+      >
+        <ThemedText style={styles.buttonText} lightColor="#fff" darkColor="#fff">
+          Done
+        </ThemedText>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -321,6 +363,11 @@ const styles = StyleSheet.create({
   viewContainer: {
     flex: 1,
     padding: 8,
+  },
+  doneContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messageText: {
     fontSize: 14,
@@ -372,5 +419,22 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  completionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  completionText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  completionButton: {
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    width: '80%',
   },
 }); 

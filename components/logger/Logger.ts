@@ -87,9 +87,24 @@ class SQLiteLogger {
    */
   async log(message: string, data: LogEntryData = {}): Promise<void> {
     // Check if the logger is initialized and the database is open.
-    if (!this.isInitialized || !this.db) {
-      console.warn('Logger not initialized or database not open. Log attempt ignored.');
+    if (!this.isInitialized) {
+      console.warn('Logger not initialized. Log attempt ignored.');
       return;
+    }
+
+    // If database is null or closed, try to reconnect
+    if (!this.db) {
+      try {
+        console.log('Database connection lost, attempting to reconnect...');
+        await this.initialize();
+        if (!this.isInitialized || !this.db) {
+          console.warn('Failed to reconnect to database. Log attempt ignored.');
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to reconnect to database:', error);
+        return;
+      }
     }
 
     // Prepare the log entry data.
@@ -110,7 +125,17 @@ class SQLiteLogger {
       // Also log to console for debugging purposes during development.
       console.log(`[${this.userId}-${this.sessionCode}] ${message}`, data);
     } catch (error) {
-      console.error('Failed to write log to database:', error);
+      // Check if error is due to closed connection
+      if (error instanceof Error && 
+          (error.message.includes('closed resource') || 
+           error.message.includes('database is closed'))) {
+        console.warn('Database connection was closed. Reconnecting for future logs...');
+        this.db = null;
+        this.isInitialized = false;
+        // We'll try to initialize on next log call
+      } else {
+        console.error('Failed to write log to database:', error);
+      }
       // Handle the error appropriately (e.g., retry logic, notify user)
     }
   }
@@ -121,9 +146,24 @@ class SQLiteLogger {
    * @returns {Promise<LogEntry[]>} A promise that resolves with an array of log entries.
    */
   async getLogs(limit: number = 100): Promise<LogEntry[]> {
-    if (!this.isInitialized || !this.db) {
-      console.warn('Logger not initialized or database not open.');
+    if (!this.isInitialized) {
+      console.warn('Logger not initialized.');
       return [];
+    }
+
+    // If database is null or closed, try to reconnect
+    if (!this.db) {
+      try {
+        console.log('Database connection lost, attempting to reconnect...');
+        await this.initialize();
+        if (!this.isInitialized || !this.db) {
+          console.warn('Failed to reconnect to database. Cannot retrieve logs.');
+          return [];
+        }
+      } catch (error) {
+        console.error('Failed to reconnect to database:', error);
+        return [];
+      }
     }
 
     const sqlSelect = `SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?;`;
@@ -134,6 +174,15 @@ class SQLiteLogger {
       // return results.map(row => ({ ...row, data: JSON.parse(row.data) }));
       return results;
     } catch (error) {
+      // Check if error is due to closed connection
+      if (error instanceof Error && 
+          (error.message.includes('closed resource') || 
+           error.message.includes('database is closed'))) {
+        console.warn('Database connection was closed. Reconnecting for future operations...');
+        this.db = null;
+        this.isInitialized = false;
+        // Return empty array this time
+      }
       console.error('Failed to retrieve logs:', error);
       return [];
     }

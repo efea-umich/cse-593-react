@@ -102,6 +102,9 @@ export default function KeyboardView(props: KeyboardViewProps) {
   // Refs for animations (Still used by updateKeyScales, though not visually applied)
   const animatedScalesRef = useRef<{ [key: string]: Animated.Value }>({});
   const currentScalesRef = useRef<{ [key: string]: number }>({});
+  const [dynamicHitboxDisabledOnError, setDynamicHitboxDisabledOnError] = useState(false);
+
+  const shouldUseDynamicHitbox = dynamicHitboxEnabled && !dynamicHitboxDisabledOnError;
 
   // Initialize animated scales for letter keys (Unchanged)
   // Although not visually used, the values might be useful for debugging or future features
@@ -188,11 +191,11 @@ export default function KeyboardView(props: KeyboardViewProps) {
       const distancePenalty = -Math.exp(normalizedDistance);
   
       let score = 0;
-      if (dynamicHitboxEnabled) {
+      if (shouldUseDynamicHitbox) {
         if (lastLetterPressed.current) {
-          const probability = getProbability(lastLetterPressed.current, kp.letter);
+          const probability = Math.sqrt(getProbability(lastLetterPressed.current, kp.letter));
           let distanceMultiplier = Math.exp(
-            -Math.pow(normalizedDistance, 2) / 0.25
+            -Math.pow(normalizedDistance, 2) / 0.4
           )
           score = probability * distanceMultiplier;
         } else {
@@ -218,7 +221,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
     candidates.sort((a, b) => b.score - a.score);
   
     let probabilityDidChangeOutcome = false;
-    if (candidates.length > 1 && dynamicHitboxEnabled && lastLetterPressed.current) {
+    if (candidates.length > 1 && shouldUseDynamicHitbox && lastLetterPressed.current) {
       const candidatesByDistance = [...candidates].sort((a, b) => a.distance - b.distance);
       if (candidates[0].keyPos.letter !== candidatesByDistance[0].keyPos.letter) {
         const touchedCandidate = candidates.find(c => c.touchInside);
@@ -226,6 +229,8 @@ export default function KeyboardView(props: KeyboardViewProps) {
           probabilityDidChangeOutcome = true;
           if (logger) {
             logger.log(`changed_outcome`, { currentInput: message, changedFrom: candidatesByDistance[0].keyPos.letter, changedTo: candidates[0].keyPos.letter});
+            console.log(`Probabilities: ${getProbability(lastLetterPressed.current, candidatesByDistance[0].keyPos.letter)} to ${getProbability(lastLetterPressed.current, candidates[0].keyPos.letter)}`);
+            console.log(`Distance factors: ${candidatesByDistance[0].distance} to ${candidates[0].distance}`);
           } else {
             console.log(`Changed outcome from ${candidatesByDistance[0].keyPos.letter} to ${candidates[0].keyPos.letter} (current input: ${message})`);
           }
@@ -268,7 +273,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
       const keyId = `${kp.row}-${kp.col}-${kp.letter}`;
       let targetScale = BASE_SCALE;
 
-      if (dynamicHitboxEnabled) {
+      if (shouldUseDynamicHitbox) {
         const p = getProbability(pressedLetter, kp.letter);
         targetScale = BASE_SCALE + (p - DEFAULT_PROBABILITY) * SCALE_MULTIPLIER;
         if (Math.abs(targetScale - BASE_SCALE) > 0.01) {
@@ -304,7 +309,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
     }, 100);
 
     setMessage(message + letter);
-    if (dynamicHitboxEnabled) {
+    if (shouldUseDynamicHitbox) {
       updateKeyScales(letter, keyPositions);
     }
     lastLetterPressed.current = letter;
@@ -313,6 +318,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
   // Handle backspace (Unchanged)
   const handleBackspace = () => {
     if (message.length > 0) {
+        setDynamicHitboxDisabledOnError(true);
         if (logger) {
           logger.log(`backspace_pressed`, { currentInput: message });
         } else {
@@ -325,7 +331,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
             const lastChar = newMessage[newMessage.length-1].toLowerCase();
             if (/^[a-z]$/.test(lastChar)) {
                 lastLetterPressed.current = lastChar;
-                 if (dynamicHitboxEnabled) {
+                 if (shouldUseDynamicHitbox) {
                     updateKeyScales(lastChar, keyPositions);
                  } else {
                     updateKeyScales('', keyPositions);
@@ -346,6 +352,9 @@ export default function KeyboardView(props: KeyboardViewProps) {
 
   // Handlers for bottom row buttons (Unchanged)
   const handleSpacePress = () => {
+    if (dynamicHitboxDisabledOnError) {
+      setDynamicHitboxDisabledOnError(false);
+    }
     setMessage(message + ' ');
     lastLetterPressed.current = null;
     updateKeyScales('', keyPositions);
