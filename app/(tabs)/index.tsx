@@ -6,6 +6,9 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import LogViewer from '@/components/logger/LogViewer';
+import SessionPrompt from '@/components/logger/SessionPrompt';
+import LoggerService from '@/components/logger/LoggerService';
 
 // Global state for app settings
 export interface AppSettings {
@@ -32,12 +35,41 @@ export function getAppSettings(): AppSettings {
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const [settings, setSettings] = useState<AppSettings>({ ...defaultSettings });
+  const [showLogViewer, setShowLogViewer] = useState(false);
+  const [showSessionPrompt, setShowSessionPrompt] = useState(false);
 
   // Update both local and global settings
   const updateSetting = (key: keyof AppSettings, value: boolean) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     globalSettings = newSettings;
+  };
+
+  // Handle session submission
+  const handleSessionSubmit = async (userId: string, sessionCode: string) => {
+    setShowSessionPrompt(false);
+    
+    try {
+      // Initialize logger here before navigation
+      const logger = await LoggerService.createLogger({ userId, sessionCode });
+      if (!logger) {
+        console.error('Failed to create logger');
+        return;
+      }
+      
+      // Log session start
+      logger.log('session_start');
+      
+      // Navigate to ClockworksApp using stack navigation
+      router.push('/clockworks');
+    } catch (error) {
+      console.error('Failed to initialize logger:', error);
+    }
+  };
+
+  // Handle session cancellation
+  const handleSessionCancel = () => {
+    setShowSessionPrompt(false);
   };
 
   return (
@@ -103,19 +135,46 @@ export default function HomeScreen() {
         
         <TouchableOpacity 
           style={[
-            styles.demoButton,
+            styles.button,
             { backgroundColor: Colors[colorScheme ?? 'light'].tint }
           ]}
           onPress={() => {
-            // Navigate to the Clockworks demo screen
-            router.push('/clockworks');
+            // Show session prompt
+            setShowSessionPrompt(true);
           }}
         >
-          <ThemedText style={styles.demoButtonText} lightColor="#fff" darkColor="#fff">
+          <ThemedText style={styles.buttonText} lightColor="#fff" darkColor="#fff">
             Try Keyboard Demo
           </ThemedText>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.button,
+            { 
+              backgroundColor: '#34C759',
+              marginTop: 0
+            }
+          ]}
+          onPress={() => setShowLogViewer(true)}
+        >
+          <ThemedText style={styles.buttonText} lightColor="#fff" darkColor="#fff">
+            View Session Logs
+          </ThemedText>
+        </TouchableOpacity>
       </ScrollView>
+      
+      <LogViewer 
+        visible={showLogViewer}
+        onClose={() => setShowLogViewer(false)}
+      />
+
+      {/* Session Prompt Modal */}
+      <SessionPrompt 
+        visible={showSessionPrompt}
+        onSubmit={handleSessionSubmit}
+        onCancel={handleSessionCancel}
+      />
     </ThemedView>
   );
 }
@@ -157,13 +216,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
     opacity: 0.7,
   },
-  demoButton: {
+  button: {
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginVertical: 20,
   },
-  demoButtonText: {
+  buttonText: {
     fontSize: 16,
     fontWeight: '600',
   },

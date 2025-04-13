@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import { ThemedView } from '@/components/ThemedView';
@@ -12,16 +12,8 @@ import { Colors } from '@/constants/Colors';
 // Import keyboard components
 import KeyboardView from '@/components/keyboard/KeyboardView';
 import NumberSymbolView from '@/components/keyboard/NumberSymbolView';
-
-// Logging utility function
-const logEvent = (event: string, details?: any) => {
-  const timestamp = new Date().toISOString();
-  console.log(JSON.stringify({
-    timestamp,
-    event,
-    details
-  }));
-};
+import LoggerService from '@/components/logger/LoggerService';
+import Logger from '@/components/logger/Logger';
 
 // Simulation of smartwatch screen dimensions (1.7-1.9 inches diagonal)
 // Using 44mm Apple Watch dimensions as reference (approximately 184x224 pixels)
@@ -45,17 +37,36 @@ export default function ClockworksApp() {
   const [dynamicHitboxEnabled, setDynamicHitboxEnabled] = useState<boolean>(true);
   const [hitboxAffected, setHitboxAffected] = useState<boolean>(false);
   
-  // Log session start
+  // Logger reference
+  const loggerRef = useRef<Logger | null>(null);
+  
+  // Get logger instance from LoggerService
   useEffect(() => {
-    logEvent('session_start');
+    // Get the singleton logger instance that was initialized before navigation
+    const logger = LoggerService.getLogger();
+    
+    if (!logger) {
+      console.error('Logger not initialized, navigating back to home');
+      router.replace('/');
+      return;
+    }
+    
+    loggerRef.current = logger;
+    logger.log('view_loaded', { view: 'clockworks' });
+    
     return () => {
-      logEvent('session_end');
+      // Log session end when component unmounts
+      if (loggerRef.current) {
+        loggerRef.current.log('session_end');
+      }
     };
   }, []);
 
   // Log view transitions
   useEffect(() => {
-    logEvent('view_transition', { view: currentView });
+    if (loggerRef.current) {
+      loggerRef.current.log('view_transition', { view: currentView });
+    }
   }, [currentView]);
 
   // Common touch handler with logging
@@ -63,7 +74,10 @@ export default function ClockworksApp() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    logEvent('tap', { action, ...details });
+    
+    if (loggerRef.current) {
+      loggerRef.current.log('tap', { action, ...details });
+    }
   };
 
   // Render the appropriate view based on current state
@@ -122,6 +136,7 @@ export default function ClockworksApp() {
             setCurrentView(AppView.INCOMING_MESSAGE);
             handleTap('back_from_keyboard');
           }}
+          logger={loggerRef.current}
         />;
       
       case AppView.NUMBER_SYMBOL:
@@ -179,12 +194,12 @@ interface IncomingMessageViewProps {
 
 function IncomingMessageView({ onSuggestionSelect, onKeyboardOpen }: IncomingMessageViewProps) {
   const colorScheme = useColorScheme();
-  const suggestions = ["Yes", "Sounds good!", "Okay", "Can't make it"];
+  const suggestions = ["Yes", "Sounds good!", "No"];
 
   return (
     <View style={styles.viewContainer}>
       <ThemedText style={styles.messageText}>
-        From Joyce: Hey! Dinner tonight? Thinking chicken?
+        Hey! Dinner tonight? Thinking chicken?
       </ThemedText>
       
       <View style={styles.suggestionsContainer}>
@@ -209,7 +224,7 @@ function IncomingMessageView({ onSuggestionSelect, onKeyboardOpen }: IncomingMes
         onPress={onKeyboardOpen}
       >
         <ThemedText style={styles.customReplyText}>
-          Type Custom Reply
+          Type a reply
         </ThemedText>
       </TouchableOpacity>
     </View>
@@ -313,7 +328,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   suggestionButton: {
-    padding: 8,
+    padding: 3,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -322,12 +337,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   customReplyButton: {
-    padding: 8,
+    padding: 6,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ccc',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   customReplyText: {
     fontSize: 14,

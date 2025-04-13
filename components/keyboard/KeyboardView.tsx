@@ -18,21 +18,12 @@ import * as Haptics from 'expo-haptics';
 // { "A": { "B": 0.7, "C": 0.3, ... }, "B": { "A": 0.5, ... }, ... }
 // KEEPING THE IMPORT AS IS, per user request.
 import hitboxProbabilitiesRaw from '@/data/hitboxProbabilities.json';
+import Logger from '@/components/logger/Logger';
 
 // --- Probability Table Construction (Unchanged) ---
 function constructProbabilityTable(hitboxProbabilitiesRaw: any) {
   const table: Record<string, Record<string, number>> = {};
-  hitboxProbabilitiesRaw.forEach((letterData: any) => {
-    const sourceLetter = Object.keys(letterData)[0].toUpperCase();
-    table[sourceLetter] = {};
-    const probabilities = letterData[Object.keys(letterData)[0]];
-    probabilities.forEach((prob: any) => {
-      const targetLetter = Object.keys(prob)[0].toUpperCase();
-      const probability = prob[Object.keys(prob)[0]];
-      table[sourceLetter][targetLetter] = probability;
-    });
-  });
-  return table;
+  return hitboxProbabilitiesRaw;
 }
 const hitboxProbabilities = constructProbabilityTable(hitboxProbabilitiesRaw);
 // --- End Probability Table Construction ---
@@ -47,13 +38,14 @@ export interface KeyboardViewProps {
   onToggleNumberSymbol: () => void;
   onSend: () => void;
   onBack: () => void;
+  logger?: Logger | null;
 }
 
 // Define the keyboard layout - ONLY LETTER ROWS for dynamic hit detection
 const keyLayout: string[][] = [
-  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-  ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
 ];
 
 // Constants
@@ -61,11 +53,13 @@ const BASE_SCALE = 1.0;
 const SCALE_MULTIPLIER = 0.6; // Used for probability calculation influence, not visual scale now
 const DEFAULT_PROBABILITY = 0.5;
 const DEBUG_HITBOXES = false; // Keep false for production - now only controls debug overlay
-const PROBABILITY_INFLUENCE = 0.2;
 
 // Helper function to get probability (Unchanged)
 const getProbability = (prevKey: string, targetKey: string): number => {
-  if (!/^[A-Z]$/.test(prevKey) || !/^[A-Z]$/.test(targetKey)) {
+  prevKey = prevKey.toLowerCase();
+  targetKey = targetKey.toLowerCase();
+  
+  if (!/^[a-z]$/.test(prevKey) || !/^[a-z]$/.test(targetKey)) {
     return DEFAULT_PROBABILITY;
   }
   const probabilitiesForPrev = hitboxProbabilities[prevKey];
@@ -84,6 +78,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
     onToggleNumberSymbol,
     onSend,
     onBack,
+    logger
   } = props;
 
   // State for keyboard dimensions and key positions (only for the letter grid)
@@ -124,11 +119,6 @@ export default function KeyboardView(props: KeyboardViewProps) {
         }
     });
   };
-
-  // Effect (Unchanged)
-  useEffect(() => {
-    // Initialization moved to onGridLayout
-  }, []);
 
   // Calculate key positions for the LETTER GRID when it lays out (Unchanged)
   const onGridLayout = (event: LayoutChangeEvent) => {
@@ -203,10 +193,9 @@ export default function KeyboardView(props: KeyboardViewProps) {
         if (lastLetterPressed.current) {
           const probability = getProbability(lastLetterPressed.current, kp.letter);
           let distanceMultiplier = Math.exp(
-            -Math.pow(normalizedDistance, 2) / 0.2
+            -Math.pow(normalizedDistance, 2) / 0.25
           )
           score = probability * distanceMultiplier;
-          console.log(`Letter: ${kp.letter}, score: ${score}, distanceMultiplier: ${distanceMultiplier}, probability: ${probability}, normalizedDistance: ${normalizedDistance}`);
         } else {
           score = distancePenalty;
         }
@@ -236,20 +225,32 @@ export default function KeyboardView(props: KeyboardViewProps) {
         const touchedCandidate = candidates.find(c => c.touchInside);
         if (!touchedCandidate || touchedCandidate.keyPos.letter !== candidates[0].keyPos.letter) {
           probabilityDidChangeOutcome = true;
+          if (logger) {
+            logger.log(`changed_outcome`, { currentInput: message, changedFrom: candidatesByDistance[0].keyPos.letter, changedTo: candidates[0].keyPos.letter});
+          } else {
+            console.log(`Changed outcome from ${candidatesByDistance[0].keyPos.letter} to ${candidates[0].keyPos.letter} (current input: ${message})`);
+          }
         }
       }
     }
 
     setHitboxAffected(probabilityDidChangeOutcome);
+    
+    if (logger) {
+      logger.log(`Typed ${candidates[0].keyPos.letter}`, { currentInput: message });
+    } else {
+      console.log(`Typed ${candidates[0].keyPos.letter} (current input: ${message})`);
+    }
+    
     handleKeyPress(candidates[0].keyPos);
   };
 
   // --- Key Scaling Logic (Unchanged, calculates values but not visually applied) ---
   const updateKeyScales = (pressedLetter: string, currentKeyPositions: KeyPosition[]) => {
-     if (!currentKeyPositions || currentKeyPositions.length === 0 || !/^[A-Z]$/.test(pressedLetter)) {
+     if (!currentKeyPositions || currentKeyPositions.length === 0 || !/^[a-z]$/.test(pressedLetter)) {
         Object.keys(animatedScalesRef.current).forEach(keyId => {
              const letter = keyId.split('-').pop();
-             if (letter && /^[A-Z]$/.test(letter)) {
+             if (letter && /^[a-z]$/.test(letter.toLowerCase())) {
                 if (currentScalesRef.current[keyId] !== BASE_SCALE) {
                     // Stop any ongoing animation and set value directly
                     animatedScalesRef.current[keyId]?.stopAnimation();
@@ -313,11 +314,17 @@ export default function KeyboardView(props: KeyboardViewProps) {
   // Handle backspace (Unchanged)
   const handleBackspace = () => {
     if (message.length > 0) {
+        if (logger) {
+          logger.log(`Backspace pressed`, { currentInput: message });
+        } else {
+          console.log(`Backspace pressed (current input: ${message})`);
+        }
+        
         const newMessage = message.slice(0, -1);
         setMessage(newMessage);
         if (newMessage.length > 0) {
-            const lastChar = newMessage[newMessage.length-1].toUpperCase();
-            if (/^[A-Z]$/.test(lastChar)) {
+            const lastChar = newMessage[newMessage.length-1].toLowerCase();
+            if (/^[a-z]$/.test(lastChar)) {
                 lastLetterPressed.current = lastChar;
                  if (dynamicHitboxEnabled) {
                     updateKeyScales(lastChar, keyPositions);
@@ -514,7 +521,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginHorizontal: 10,
-    marginTop: Platform.OS === 'ios' ? 40 : 10, // Adjust top margin for safe area
+    marginTop: 10,
     marginBottom: 5,
   },
   actionButton: {
