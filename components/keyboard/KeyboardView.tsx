@@ -134,7 +134,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
 
     keyLayout.forEach((row, rowIndex) => {
       const colCount = row.length;
-      const keyWidth = width / colCount;
+      const keyWidth = (width - 5) / colCount;
       let currentX = 0;
 
       row.forEach((letter, colIndex) => {
@@ -186,7 +186,6 @@ export default function KeyboardView(props: KeyboardViewProps) {
       const avgKeyDimension = (kp.width + kp.height) / 2;
       const normalizedDistance = distance / avgKeyDimension;
       const distancePenalty = -Math.exp(normalizedDistance);
-
   
       let score = 0;
       if (dynamicHitboxEnabled) {
@@ -541,10 +540,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 10,
-    marginBottom: 10,
+    marginBottom:0,
   },
   inputContainer: {
-    height: 45,
+    height: 35,
     borderWidth: 1,
     borderColor: '#d1d5db', // Slightly darker border
     borderRadius: 8,
@@ -556,12 +555,12 @@ const styles = StyleSheet.create({
     flexGrow: (1),
     alignItems: 'center',
     paddingHorizontal: 12,
-    minHeight: 45,
+    minHeight: 35,
   },
   inputText: {
     fontSize: 18,
     color: '#1f2937', // Darker text
-    lineHeight: 45, // Match the container height for vertical centering
+    lineHeight: 35, // Match the container height for vertical centering
   },
   cursor: {
     fontSize: 18,
@@ -600,7 +599,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 5,
-    margin: 2.5, // Slightly increased margin
+    margin: 3.5, // Slightly increased margin
     // Shadow/Elevation
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -609,7 +608,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   keyText: { // Text inside letter keys
-    fontSize: 19, // Slightly larger
+    fontSize: 16, // Slightly larger
     fontWeight: '400',
     color: '#000',
   },

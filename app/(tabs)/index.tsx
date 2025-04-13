@@ -58,10 +58,13 @@ export default function HomeScreen() {
       }
       
       // Log session start
-      logger.log('session_start');
+      logger.log('session_start', { dynamicHitboxEnabled: settings.dynamicHitboxEnabled });
       
       // Navigate to ClockworksApp using stack navigation
-      router.push('/clockworks');
+      router.push({
+        pathname: '/clockworks',
+        params: { dynamicHitboxEnabled: settings.dynamicHitboxEnabled.toString() }
+      });
     } catch (error) {
       console.error('Failed to initialize logger:', error);
     }

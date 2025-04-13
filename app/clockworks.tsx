@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import { ThemedView } from '@/components/ThemedView';
@@ -31,10 +31,13 @@ enum AppView {
 
 export default function ClockworksApp() {
   const colorScheme = useColorScheme();
+  const { dynamicHitboxEnabled: paramDynamicHitbox } = useLocalSearchParams();
   const [currentView, setCurrentView] = useState<AppView>(AppView.INCOMING_MESSAGE);
   const [message, setMessage] = useState<string>('');
   const [selectedSuggestion, setSelectedSuggestion] = useState<string>('');
-  const [dynamicHitboxEnabled, setDynamicHitboxEnabled] = useState<boolean>(true);
+  const [dynamicHitboxEnabled, setDynamicHitboxEnabled] = useState<boolean>(
+    paramDynamicHitbox === 'true'
+  );
   const [hitboxAffected, setHitboxAffected] = useState<boolean>(false);
   
   // Logger reference
