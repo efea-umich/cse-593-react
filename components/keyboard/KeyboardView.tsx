@@ -198,10 +198,13 @@ export default function KeyboardView(props: KeyboardViewProps) {
       const distancePenalty = -Math.exp(normalizedDistance);
   
       let score = 0;
+
       if (shouldUseDynamicHitbox) {
         if (lastLetterPressed.current) {
           const probabilityRaw = getProbability(lastTwo, kp.letter);
           const probability = Math.log(probabilityRaw + 1);
+          // probsDebug[kp.letter] = probability;
+          // probsDebugRaw[kp.letter] = probabilityRaw;
           let distanceMultiplier = Math.exp(
             -Math.pow(normalizedDistance, 2) / 0.4
           )
@@ -214,7 +217,17 @@ export default function KeyboardView(props: KeyboardViewProps) {
       }
       candidates.push({ keyPos: kp, distance, score, touchInside });
     });
+    // Sort probabilities by value for easier debugging
+    const sortedProbsDebug = Object.entries(probsDebug)
+      .sort(([, a], [, b]) => b - a)
+      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
     
+    const sortedProbsDebugRaw = Object.entries(probsDebugRaw)
+      .sort(([, a], [, b]) => b - a)
+      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+    
+    // console.log(`Probs debug: ${JSON.stringify(sortedProbsDebug)}`);
+    // console.log(`Probs debug raw: ${JSON.stringify(sortedProbsDebugRaw)}`);
     // If the overall closest touch is too far from any key center, do nothing.
     const MAX_DISTANCE_THRESHOLD_FACTOR = 0.5;
     const maxDistanceThreshold = Math.min(gridWidth, gridHeight) * MAX_DISTANCE_THRESHOLD_FACTOR;
@@ -226,23 +239,20 @@ export default function KeyboardView(props: KeyboardViewProps) {
   
     // Sort so that the candidate with the highest (or infinite) score is chosen.
     candidates.sort((a, b) => b.score - a.score);
+
+    let selectedKey = candidates[0];
   
     let probabilityDidChangeOutcome = false;
-    if (candidates.length > 1 && shouldUseDynamicHitbox && lastLetterPressed.current) {
-      const candidatesByDistance = [...candidates].sort((a, b) => a.distance - b.distance);
-      if (candidates[0].keyPos.letter !== candidatesByDistance[0].keyPos.letter) {
-        const touchedCandidate = candidates.find(c => c.touchInside);
-        if (!touchedCandidate || touchedCandidate.keyPos.letter !== candidates[0].keyPos.letter) {
-          probabilityDidChangeOutcome = true;
-          if (logger) {
-            logger.log(`changed_outcome`, { currentInput: message, changedFrom: candidatesByDistance[0].keyPos.letter, changedTo: candidates[0].keyPos.letter});
-            console.log(`Probabilities: ${getProbability(lastTwo, candidatesByDistance[0].keyPos.letter)} to ${getProbability(lastTwo, candidates[0].keyPos.letter)}`);
-            console.log(`Distance factors: ${candidatesByDistance[0].distance} to ${candidates[0].distance}`);
-          } else {
-            console.log(`Changed outcome from ${candidatesByDistance[0].keyPos.letter} to ${candidates[0].keyPos.letter} (current input: ${message})`);
-          }
-        }
+    const touchedCandidate = candidates.find(c => c.touchInside);
+    if (touchedCandidate && getProbability(lastTwo, touchedCandidate.keyPos.letter) > 0.1) {
+        selectedKey = touchedCandidate;
+    } else {
+      if (touchedCandidate && logger && touchedCandidate.keyPos.letter !== candidates[0].keyPos.letter) {
+        logger.log(`changed_outcome`, { currentInput: message, changedFrom: touchedCandidate.keyPos.letter, changedTo: candidates[0].keyPos.letter});
+        console.log(`Conditions: ${touchedCandidate == null} ${logger == null} ${touchedCandidate?.keyPos.letter == candidates[0].keyPos.letter}`);
+        probabilityDidChangeOutcome = true;
       }
+      selectedKey = candidates[0];
     }
 
     setHitboxAffected(probabilityDidChangeOutcome);
@@ -253,7 +263,7 @@ export default function KeyboardView(props: KeyboardViewProps) {
       console.log(`Typed ${candidates[0].keyPos.letter} (current input: ${message})`);
     }
     
-    handleKeyPress(candidates[0].keyPos);
+    handleKeyPress(selectedKey.keyPos);
   };
 
   // --- Key Scaling Logic (Unchanged, calculates values but not visually applied) ---
