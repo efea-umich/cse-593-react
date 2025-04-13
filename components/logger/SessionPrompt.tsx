@@ -72,11 +72,11 @@ export default function SessionPrompt({ visible, onSubmit, onCancel }: SessionPr
               { 
                 borderColor: '#ccc',
                 color: Colors[colorScheme ?? 'light'].text,
-                backgroundColor: '#f9f9f9'
+                backgroundColor: colorScheme === 'dark' ? '#252525' : '#f9f9f9'
               }
             ]}
             placeholder="User ID"
-            placeholderTextColor="#999"
+            placeholderTextColor={colorScheme === 'dark' ? '#9BA1A6' : '#999'}
             value={userId}
             onChangeText={setUserId}
             autoCapitalize="none"
@@ -88,11 +88,11 @@ export default function SessionPrompt({ visible, onSubmit, onCancel }: SessionPr
               { 
                 borderColor: '#ccc',
                 color: Colors[colorScheme ?? 'light'].text,
-                backgroundColor: '#f9f9f9'
+                backgroundColor: colorScheme === 'dark' ? '#252525' : '#f9f9f9'
               }
             ]}
             placeholder="Session Code"
-            placeholderTextColor="#999"
+            placeholderTextColor={colorScheme === 'dark' ? '#9BA1A6' : '#999'}
             value={sessionCode}
             onChangeText={setSessionCode}
             autoCapitalize="none"

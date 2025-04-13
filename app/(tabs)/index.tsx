@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, Switch, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, Switch, ScrollView, SafeAreaView } from 'react-native';
 import { useState } from 'react';
 import { Stack, router } from 'expo-router';
 
@@ -77,6 +77,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: 'ClockWorks Settings' }} />
       
       <ScrollView style={styles.scrollView}>
@@ -89,26 +90,6 @@ export default function HomeScreen() {
         
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Keyboard Settings</ThemedText>
-          
-          <ThemedView style={styles.settingRow}>
-            <ThemedView style={styles.settingTextContainer}>
-              <ThemedText type="defaultSemiBold">Show Hitboxes</ThemedText>
-              <ThemedText style={styles.settingDescription}>
-                Visualize the tap areas for each key
-              </ThemedText>
-            </ThemedView>
-            <Switch
-              trackColor={{ 
-                false: '#767577', 
-                true: Colors[colorScheme ?? 'light'].tint 
-              }}
-              thumbColor="#f4f3f4"
-              ios_backgroundColor="#3e3e3e"
-              onValueChange={(value) => updateSetting('showHitboxes', value)}
-              value={settings.showHitboxes}
-            />
-          </ThemedView>
-          
           <ThemedView style={styles.settingRow}>
             <ThemedView style={styles.settingTextContainer}>
               <ThemedText type="defaultSemiBold">Dynamic Hitboxes</ThemedText>
@@ -178,6 +159,7 @@ export default function HomeScreen() {
         onSubmit={handleSessionSubmit}
         onCancel={handleSessionCancel}
       />
+    </SafeAreaView>
     </ThemedView>
   );
 }
